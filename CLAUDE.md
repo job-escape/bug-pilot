@@ -1,5 +1,62 @@
 # Bug-pilot — Claude Code Guide
 
+## If a new user asks you to set up and run this project
+
+Do this in order — don't skip steps:
+
+1. **Install prerequisites** (if missing):
+   ```bash
+   # Check and install Bun
+   which bun || curl -fsSL https://bun.sh/install | bash
+   # Check and install ffmpeg
+   which ffmpeg || brew install ffmpeg
+   # Check and install ngrok
+   which ngrok || brew install ngrok
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   bun install
+   cd dashboard && bun install && cd ..
+   ```
+
+3. **Ask the user for these keys** (you cannot get them yourself):
+   - `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET` — from the bot owner (not the user)
+   - `GITHUB_TOKEN` — github.com → Settings → Developer settings → Personal access tokens → scopes: repo
+   - `ANTHROPIC_API_KEY` — console.anthropic.com
+   - `DATABASE_URL` — create free DB at neon.tech, copy connection string
+
+4. **Fill env files:**
+   ```bash
+   cp .env.example .env
+   cp dashboard/.env.local.example dashboard/.env.local
+   # Write the keys into .env and dashboard/.env.local
+   # Set BOT_URL=http://localhost:3001 in dashboard/.env.local
+   # Set DASHBOARD_URL=http://localhost:3000 in .env
+   ```
+
+5. **Run database migration:**
+   ```bash
+   bun --env-file=.env scripts/migrate.ts
+   ```
+
+6. **Start ngrok** (in a separate terminal):
+   ```bash
+   ngrok http 3001
+   ```
+   Tell the user to copy the `https://xxxx.ngrok.io` URL and update the Slack app Event Subscriptions Request URL to `https://xxxx.ngrok.io/slack/events`.
+
+7. **Start the app:**
+   ```bash
+   bun run dev
+   ```
+
+8. Open `http://localhost:3000/setup` and add the user's GitHub repo.
+
+> Note: The Slack bot and workspace are already configured by the owner. The user only needs their own GitHub token and Anthropic key.
+
+---
+
 ## What this project is
 
 Bug-pilot is a Slack bot + AI agent + Next.js dashboard. It reads QA bug threads from Slack, fixes bugs in a GitHub repo using Claude, and opens a PR.
