@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --bg:            #0a0a0a;
+  --bg-card:       #111111;
+  --bg-card-hover: #161616;
+  --bg-elevated:   #1a1a1a;
+
+  --border:        #222222;
+  --border-hover:  #333333;
+  --border-accent: #2a2a2a;
+
+  --accent:        #00ff87;   /* electric green — the one alive signal */
+  --accent-dim:    rgba(0, 255, 135, 0.08);
+  --accent-amber:  #f59e0b;   /* warnings / unclear */
+  --accent-amber-dim: rgba(245, 158, 11, 0.08);
+  --accent-red:    #ef4444;
+  --accent-red-dim: rgba(239, 68, 68, 0.08);
+  --accent-blue:   #60a5fa;
+
+  --text:          #e8e8e2;
+  --text-muted:    #555555;
+  --text-dim:      #333333;
+}
+
+@theme inline {
+  --font-sans: 'Barlow Condensed', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle grid texture on background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+/* Card fade-up animation */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card-enter {
+  animation: fadeUp 0.35s ease both;
+}
