@@ -4,17 +4,31 @@ AI agent that reads QA bug threads from Slack, finds the right files in your Git
 
 **Flow:** Slack reaction → parse thread → dashboard review → execute → PR + DM
 
-## Prerequisites
+---
+
+## Option A — Use an existing instance
+
+If someone has already set up bug-pilot and invited you to their Slack workspace:
+
+1. Ask the owner to add your repo at `http://their-dashboard/setup`
+2. React with 🤖 to any QA thread in the allowed Slack channel
+3. You'll get a DM with a link to review and execute fixes
+
+That's it — no setup needed.
+
+---
+
+## Option B — Run your own instance
+
+### Prerequisites
 
 - [Bun](https://bun.sh) v1.0+
-- [ffmpeg](https://ffmpeg.org) — for video frame extraction: `brew install ffmpeg`
-- [ngrok](https://ngrok.com) — to expose local server to Slack: `brew install ngrok`
-- PostgreSQL database — recommend [Neon](https://neon.tech) free tier
+- [ffmpeg](https://ffmpeg.org): `brew install ffmpeg`
+- [ngrok](https://ngrok.com): `brew install ngrok`
+- PostgreSQL — recommend [Neon](https://neon.tech) free tier
 - Slack workspace where you can create apps
 - GitHub personal access token (repo read + write)
 - Anthropic API key
-
-## Setup
 
 ### 1. Clone and install
 
@@ -32,17 +46,15 @@ cp .env.example .env
 cp dashboard/.env.local.example dashboard/.env.local
 ```
 
-Fill in `.env` with your keys. For `dashboard/.env.local` set the same `DATABASE_URL` and `GITHUB_TOKEN`, plus `BOT_URL=http://localhost:3001`.
+Fill in `.env` with your keys. In `dashboard/.env.local` set the same `DATABASE_URL` and `GITHUB_TOKEN`, plus `BOT_URL=http://localhost:3001`.
 
 ### 3. Expose bot to the internet (required for Slack)
-
-Slack needs a public URL to send events to your local bot:
 
 ```bash
 ngrok http 3001
 ```
 
-Copy the `https://xxxx.ngrok.io` URL — you'll need it for the Slack app setup.
+Copy the `https://xxxx.ngrok.io` URL — you'll need it for Slack setup.
 
 ### 4. Database migration
 
@@ -53,7 +65,7 @@ bun --env-file=.env scripts/migrate.ts
 ### 5. Slack app setup
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → From scratch
-2. **OAuth & Permissions** → Bot Token Scopes, add:
+2. **OAuth & Permissions** → Bot Token Scopes:
    - `channels:history`, `groups:history`, `channels:read`
    - `reactions:read`
    - `chat:write`, `im:write`
@@ -62,13 +74,13 @@ bun --env-file=.env scripts/migrate.ts
    - Subscribe to bot events: `reaction_added`
 4. **Install app to workspace** → copy **Bot Token** and **Signing Secret** to `.env`
 
-### 6. GitHub webhook (optional — for LAST_PRS.md auto-update)
+### 6. GitHub webhook (optional)
 
 In your target repo → Settings → Webhooks → Add webhook:
 - Payload URL: `https://xxxx.ngrok.io/github-webhook`
 - Content type: `application/json`
 - Secret: same as `GITHUB_WEBHOOK_SECRET` in `.env`
-- Events: **Pull requests** only (uncheck Pushes)
+- Events: **Pull requests** only
 
 ### 7. Run
 
@@ -76,18 +88,20 @@ In your target repo → Settings → Webhooks → Add webhook:
 bun run dev
 ```
 
-Bot runs on `:3001`, dashboard on `:3000`.
+Bot on `:3001`, dashboard on `:3000`.
 
-Open `http://localhost:3000/setup` to add your first repo and configure settings.
+Open `http://localhost:3000/setup` to add your first repo and configure settings (trigger emoji, allowed channels).
+
+---
 
 ## How it works
 
 1. **Reaction** — user reacts with 🤖 to a Slack QA thread
-2. **Parse** — Claude Haiku extracts metadata (feature, platform, build); messages classified as actionable / noise / not-fixable
-3. **DM** — user receives a dashboard link with pending bugs
+2. **Parse** — Claude Haiku extracts metadata; messages classified as actionable / noise / not-fixable
+3. **DM** — user gets a dashboard link with pending bugs
 4. **Review** — skip bugs, add thread context, click Execute
-5. **Fix loop** — Claude Sonnet explores the repo with tools (`read_file`, `search_file`, `list_directory`) up to 12 rounds per bug
-6. **PR** — branch pushed, draft PR opened with checklist of fixes and rationale
+5. **Fix loop** — Claude Sonnet explores the repo with tools up to 12 rounds per bug
+6. **PR** — draft PR opened with checklist of fixes and rationale per bug
 7. **DM** — user notified with PR link and stats
 
 ## Project structure
@@ -128,4 +142,4 @@ features: onboarding, signup
 - src/hooks/useOnboarding.ts
 ```
 
-The agent pre-loads matching files before starting. Without manifests it falls back to `LAST_PRS.md` (auto-generated on each PR merge via GitHub webhook).
+Without manifests the agent falls back to `LAST_PRS.md` (auto-generated on each PR merge via GitHub webhook).
