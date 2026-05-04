@@ -7,10 +7,11 @@ AI agent that reads QA bug threads from Slack, finds the right files in your Git
 ## Prerequisites
 
 - [Bun](https://bun.sh) v1.0+
-- PostgreSQL database (recommend [Neon](https://neon.tech) free tier)
-- ffmpeg (for video frame extraction): `brew install ffmpeg`
-- Slack app with bot token
-- GitHub personal access token
+- [ffmpeg](https://ffmpeg.org) — for video frame extraction: `brew install ffmpeg`
+- [ngrok](https://ngrok.com) — to expose local server to Slack: `brew install ngrok`
+- PostgreSQL database — recommend [Neon](https://neon.tech) free tier
+- Slack workspace where you can create apps
+- GitHub personal access token (repo read + write)
 - Anthropic API key
 
 ## Setup
@@ -31,38 +32,45 @@ cp .env.example .env
 cp dashboard/.env.local.example dashboard/.env.local
 ```
 
-Fill in both files. See comments in each file for details.
+Fill in `.env` with your keys. For `dashboard/.env.local` set the same `DATABASE_URL` and `GITHUB_TOKEN`, plus `BOT_URL=http://localhost:3001`.
 
-### 3. Database migration
+### 3. Expose bot to the internet (required for Slack)
+
+Slack needs a public URL to send events to your local bot:
 
 ```bash
-bun scripts/migrate.ts
+ngrok http 3001
 ```
 
-### 4. Slack app setup
+Copy the `https://xxxx.ngrok.io` URL — you'll need it for the Slack app setup.
 
-1. Go to [api.slack.com/apps](https://api.slack.com/apps) → Create New App → From scratch
+### 4. Database migration
+
+```bash
+bun --env-file=.env scripts/migrate.ts
+```
+
+### 5. Slack app setup
+
+1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → From scratch
 2. **OAuth & Permissions** → Bot Token Scopes, add:
-   - `channels:history` — read public channel messages
-   - `groups:history` — read private channel messages
-   - `channels:read` — list channels
-   - `reactions:read` — receive reaction events
-   - `chat:write` — send messages
-   - `im:write` — open DM conversations
-   - `users:read` — look up user info
-3. **Event Subscriptions** → Enable events → Request URL: `https://your-bot-url/slack/events`
+   - `channels:history`, `groups:history`, `channels:read`
+   - `reactions:read`
+   - `chat:write`, `im:write`
+   - `users:read`
+3. **Event Subscriptions** → Enable → Request URL: `https://xxxx.ngrok.io/slack/events`
    - Subscribe to bot events: `reaction_added`
-4. Install app to workspace → copy **Bot Token** and **Signing Secret** to `.env`
+4. **Install app to workspace** → copy **Bot Token** and **Signing Secret** to `.env`
 
-### 5. GitHub webhook (for LAST_PRS.md auto-update)
+### 6. GitHub webhook (optional — for LAST_PRS.md auto-update)
 
-In your **target repo** settings → Webhooks → Add webhook:
-- Payload URL: `https://your-bot-url/github-webhook`
+In your target repo → Settings → Webhooks → Add webhook:
+- Payload URL: `https://xxxx.ngrok.io/github-webhook`
 - Content type: `application/json`
-- Secret: same value as `GITHUB_WEBHOOK_SECRET` in `.env`
-- Events: select **Pull requests** only (uncheck Pushes)
+- Secret: same as `GITHUB_WEBHOOK_SECRET` in `.env`
+- Events: **Pull requests** only (uncheck Pushes)
 
-### 6. Run
+### 7. Run
 
 ```bash
 bun run dev
@@ -70,19 +78,29 @@ bun run dev
 
 Bot runs on `:3001`, dashboard on `:3000`.
 
-Open `http://localhost:3000/setup` to add your first repo and configure settings (trigger emoji, allowed channels, allowed user).
+Open `http://localhost:3000/setup` to add your first repo and configure settings.
+
+## How it works
+
+1. **Reaction** — user reacts with 🤖 to a Slack QA thread
+2. **Parse** — Claude Haiku extracts metadata (feature, platform, build); messages classified as actionable / noise / not-fixable
+3. **DM** — user receives a dashboard link with pending bugs
+4. **Review** — skip bugs, add thread context, click Execute
+5. **Fix loop** — Claude Sonnet explores the repo with tools (`read_file`, `search_file`, `list_directory`) up to 12 rounds per bug
+6. **PR** — branch pushed, draft PR opened with checklist of fixes and rationale
+7. **DM** — user notified with PR link and stats
 
 ## Project structure
 
 ```
 src/
-  server.ts            # Slack bot + /execute + /github-webhook endpoints
+  server.ts            # Slack bot + /execute + /github-webhook
   agent/
-    runner.ts          # fixBug() — Claude tool-use loop (max 12 rounds)
+    runner.ts          # fixBug() — Claude tool-use loop
     prompts.ts         # System prompt + context builder
     stack-templates.ts # Stack-specific prompt customization
-  slack/               # Thread fetching, metadata parsing (Claude Haiku)
-  github/              # Clone, branch, commit, push, open PR
+  slack/               # Thread fetching, metadata parsing
+  github/              # Clone, branch, commit, push, PR
   messaging/           # Slack DM notifications
   memory/              # Feature manifest loader
   db/                  # Schema + PostgreSQL client
@@ -93,19 +111,9 @@ dashboard/
   lib/db.ts            # Database queries
 ```
 
-## How it works
-
-1. **Reaction** — user reacts with 🤖 to a Slack QA thread
-2. **Parse** — Claude Haiku extracts metadata (feature, platform, build); each message classified as actionable / noise / not-fixable
-3. **DM** — user receives a link to the dashboard with pending bugs
-4. **Review** — skip bugs, add thread context, then click Execute
-5. **Fix loop** — Claude Sonnet explores the repo with tools (`read_file`, `search_file`, `list_directory`) up to 12 rounds per bug
-6. **PR** — branch pushed, draft PR opened with checklist of fixes and rationale per bug
-7. **DM** — user notified with PR link and stats (fixed / needs-clarification)
-
 ## Feature manifests (optional, for faster fixes)
 
-Create a `.feature-memory/` directory in your **target repo** with `.md` files per feature:
+Create `.feature-memory/` in your target repo with `.md` files per feature:
 
 ```markdown
 ---
@@ -120,4 +128,4 @@ features: onboarding, signup
 - src/hooks/useOnboarding.ts
 ```
 
-The agent pre-loads matching files before starting, reducing exploration rounds significantly. Without manifests the agent falls back to `LAST_PRS.md` (auto-generated on each PR merge).
+The agent pre-loads matching files before starting. Without manifests it falls back to `LAST_PRS.md` (auto-generated on each PR merge via GitHub webhook).
