@@ -21,10 +21,12 @@ Do this in order — don't skip steps:
    ```
 
 3. **Ask the user for these keys** (you cannot get them yourself):
-   - `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET` — from the bot owner (not the user)
+   - `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET` — get from the bot owner, the Slack app is already set up
    - `GITHUB_TOKEN` — github.com → Settings → Developer settings → Personal access tokens → scopes: repo
    - `ANTHROPIC_API_KEY` — console.anthropic.com
    - `DATABASE_URL` — create free DB at neon.tech, copy connection string
+
+   > If the Slack bot is already running in the user's workspace channel, they only need `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, and `DATABASE_URL`. Ask the bot owner for the Slack tokens.
 
 4. **Fill env files:**
    ```bash
