@@ -1,0 +1,26 @@
+{
+  "name": "bug-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently --names bot,ui --prefix-colors cyan,yellow \"bun run src/server.ts\" \"cd dashboard && bun run dev\"",
+    "bot": "bun run src/server.ts",
+    "dashboard": "cd dashboard && bun run dev",
+    "start": "concurrently --names bot,ui --prefix-colors cyan,yellow \"bun run src/server.ts\" \"cd dashboard && npm run start\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "@anthropic-ai/sdk": "^0.40.0",
+    "@octokit/rest": "^21.0.0",
+    "@slack/bolt": "^3.22.0",
+    "postgres": "^3.4.4",
+    "simple-git": "^3.27.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "concurrently": "^9.2.1",
+    "typescript": "^5.6.0"
+  }
+}
