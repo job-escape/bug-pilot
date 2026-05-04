@@ -100,7 +100,6 @@ const app = new App({
 // ── PARSE: triggered by reaction, parse only, no fixing ──────────────────────
 app.event("reaction_added", async ({ event, client, logger }) => {
   if (event.reaction !== TRIGGER_EMOJI) return;
-  if (ALLOWED_USER_ID && event.user !== ALLOWED_USER_ID) return;
   if (event.item.type !== "message") return;
   if (allowedChannels.size > 0 && !allowedChannels.has(event.item.channel)) return;
 
