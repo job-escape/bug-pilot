@@ -6,6 +6,19 @@ AI agent that reads QA bug threads from Slack, finds the right files in your Git
 
 ---
 
+## Quick Start (with Claude Code)
+
+```bash
+git clone https://github.com/job-escape/bug-pilot
+cd bug-pilot
+```
+
+Then open Claude Code and say: **"set up and run this project"**. Claude will read `CLAUDE.md` and guide you through the rest — installing dependencies, setting up env vars, running migrations, and starting the app.
+
+You'll need: GitHub token, Anthropic API key, and a free [Neon](https://neon.tech) database URL.
+
+---
+
 ## Option A — Use an existing instance
 
 If someone has already set up bug-pilot and invited you to their Slack workspace:
